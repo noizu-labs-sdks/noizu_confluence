@@ -1,0 +1,128 @@
+defmodule Noizu.Confluence.Attachments do
+  @moduledoc """
+  Attachments — Confluence REST API v2 for metadata operations, v1 for upload
+  and full-content download (v2 has no upload and only thumbnail download).
+  See `docs/API-CONTRACT.md` §3.5.
+
+  Upload sends the v1 CSRF bypass header `X-Atlassian-Token: no-check` with a
+  `multipart/form-data` body (`file` + `minorEdit` required by the spec,
+  `comment` optional).
+  """
+
+  alias Noizu.Confluence.{Client, Error, Pagination}
+
+  @collection "/api/v2/attachments"
+  @v1_content "/rest/api/content"
+
+  @type id :: String.t() | integer()
+  @type opts :: keyword()
+  @type source :: {:path, String.t()} | {:data, filename :: String.t(), binary()}
+
+  @doc "List attachments (query: `mediaType`, `filename`, `sort`, `status`, `cursor`, `limit`, ...)."
+  @spec list(Client.t(), opts()) :: {:ok, map()} | {:error, Error.t()}
+  def list(client, opts \\ []), do: Client.request(client, :get, @collection, opts)
+
+  @doc "Lazily stream every attachment across cursor pages."
+  @spec list_stream(Client.t(), opts()) :: Enumerable.t()
+  def list_stream(client, opts \\ []), do: Pagination.stream(client, :get, @collection, opts)
+
+  @doc "Get an attachment by id."
+  @spec get(Client.t(), id(), opts()) :: {:ok, map()} | {:error, Error.t()}
+  def get(client, attachment_id, opts \\ []),
+    do: Client.request(client, :get, "#{@collection}/#{attachment_id}", opts)
+
+  @doc "Delete an attachment by id."
+  @spec delete(Client.t(), id()) :: {:ok, map()} | {:error, Error.t()}
+  def delete(client, attachment_id),
+    do: Client.request(client, :delete, "#{@collection}/#{attachment_id}")
+
+  @doc "List the attachments of a page."
+  @spec list_for_page(Client.t(), id(), opts()) :: {:ok, map()} | {:error, Error.t()}
+  def list_for_page(client, page_id, opts \\ []),
+    do: Client.request(client, :get, "/api/v2/pages/#{page_id}/attachments", opts)
+
+  @doc "Lazily stream the attachments of a page."
+  @spec list_for_page_stream(Client.t(), id(), opts()) :: Enumerable.t()
+  def list_for_page_stream(client, page_id, opts \\ []),
+    do: Pagination.stream(client, :get, "/api/v2/pages/#{page_id}/attachments", opts)
+
+  @doc "List the attachments of a blog post."
+  @spec list_for_blogpost(Client.t(), id(), opts()) :: {:ok, map()} | {:error, Error.t()}
+  def list_for_blogpost(client, blogpost_id, opts \\ []),
+    do: Client.request(client, :get, "/api/v2/blogposts/#{blogpost_id}/attachments", opts)
+
+  @doc "Lazily stream the attachments of a blog post."
+  @spec list_for_blogpost_stream(Client.t(), id(), opts()) :: Enumerable.t()
+  def list_for_blogpost_stream(client, blogpost_id, opts \\ []),
+    do: Pagination.stream(client, :get, "/api/v2/blogposts/#{blogpost_id}/attachments", opts)
+
+  @doc """
+  Upload an attachment to a container (page or blog post) via v1 multipart.
+
+  `source`:
+
+    * `{:path, filepath}` — upload a file from disk
+    * `{:data, filename, binary}` — upload raw bytes under `filename`
+      (materialized to a temp file for the multipart body)
+
+  Options: `:comment` (attachment comment), `:minor_edit` (default `true`),
+  plus any Req request option. The `X-Atlassian-Token: no-check` header is
+  always sent.
+  """
+  @spec upload(Client.t(), id(), source(), opts()) :: {:ok, map()} | {:error, Error.t()}
+  def upload(client, container_id, source, opts \\ [])
+
+  def upload(client, container_id, {:path, path}, opts) when is_binary(path) do
+    stream = File.stream!(path, [:read, :binary], 65_536)
+    do_upload(client, container_id, {stream, []}, opts)
+  end
+
+  def upload(client, container_id, {:data, filename, content}, opts)
+      when is_binary(filename) and is_binary(content) do
+    tmp_dir = System.tmp_dir!()
+    tmp_path = Path.join(tmp_dir, "noizu-confluence-upload-" <> unique() <> "-" <> filename)
+
+    File.write!(tmp_path, content)
+
+    stream = File.stream!(tmp_path, [:read, :binary], 65_536)
+
+    try do
+      do_upload(client, container_id, {stream, [filename: filename]}, opts)
+    after
+      File.rm(tmp_path)
+    end
+  end
+
+  defp do_upload(client, container_id, file_part, opts) do
+    minor_edit = Keyword.get(opts, :minor_edit, true)
+
+    form =
+      [file: file_part, minorEdit: to_string(minor_edit)] ++
+        case Keyword.fetch(opts, :comment) do
+          {:ok, comment} -> [comment: comment]
+          :error -> []
+        end
+
+    Client.request(client, :post, "#{@v1_content}/#{container_id}/child/attachment",
+      form_multipart: form,
+      headers: [{"x-atlassian-token", "no-check"}]
+    )
+  end
+
+  @doc """
+  Download the full binary content of an attachment via v1
+  (`GET /rest/api/content/{containerId}/child/attachment/{attachmentId}/download`).
+  Returns `{:ok, binary}`.
+  """
+  @spec download(Client.t(), id(), id(), opts()) :: {:ok, binary()} | {:error, Error.t()}
+  def download(client, container_id, attachment_id, opts \\ []) do
+    Client.request(
+      client,
+      :get,
+      "#{@v1_content}/#{container_id}/child/attachment/#{attachment_id}/download",
+      [decode_body: false] ++ opts
+    )
+  end
+
+  defp unique(), do: Base.encode16(:crypto.strong_rand_bytes(6), case: :lower)
+end
