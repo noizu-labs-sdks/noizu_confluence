@@ -53,6 +53,52 @@ defmodule Noizu.Confluence.ClientTest do
     end
   end
 
+  describe "inspect redaction (T-001)" do
+    test "inspect/1 never renders the api_token in basic auth mode" do
+      client =
+        Client.new(
+          auth_mode: :basic,
+          site: "example.atlassian.net",
+          email: "user@example.com",
+          api_token: "super-secret-api-token-123"
+        )
+
+      text = inspect(client)
+
+      refute text =~ "super-secret-api-token-123"
+      refute text =~ "secret-api-token"
+      assert text =~ "user@example.com"
+      assert text =~ "supe"
+    end
+
+    test "inspect/1 never renders the access_token in oauth mode" do
+      client =
+        Client.new(
+          auth_mode: :oauth,
+          cloud_id: "a436116f-02ce-4620-840b-f5dd8d3f7861",
+          access_token: "super-secret-oauth-token-xyz"
+        )
+
+      text = inspect(client)
+
+      refute text =~ "super-secret-oauth-token-xyz"
+      refute text =~ "secret-oauth-token"
+      assert text =~ "supe"
+    end
+
+    test "ArgumentError messages never interpolate credential values" do
+      message =
+        try do
+          Client.new(auth_mode: :oauth, cloud_id: nil, access_token: "leaky-oauth-token")
+          ""
+        rescue
+          e in ArgumentError -> Exception.message(e)
+        end
+
+      refute message =~ "leaky-oauth-token"
+    end
+  end
+
   describe "basic auth requests" do
     test "hits https://<site>/wiki with a Basic authorization header" do
       client = basic_client(__MODULE__)
@@ -139,6 +185,47 @@ defmodule Noizu.Confluence.ClientTest do
       Req.Test.expect(__MODULE__, fn conn -> respond_json(conn, 429, %{}) end)
 
       assert {:error, %Error{status: 429}} = Spaces.list(client)
+    end
+
+    test "a negative Retry-After falls back to the bounded backoff, never a negative or huge sleep" do
+      client = basic_client(__MODULE__, retry_sleep: fn ms -> send(self(), {:slept, ms}) end)
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        conn |> Plug.Conn.put_resp_header("retry-after", "-5") |> respond_json(429, %{})
+      end)
+
+      Req.Test.expect(__MODULE__, fn conn -> respond_json(conn, 200, %{"results" => []}) end)
+
+      assert {:ok, _} = Spaces.list(client)
+      assert_received {:slept, ms}
+      assert ms in 0..30_000
+    end
+
+    test "a garbage Retry-After falls back to the bounded backoff" do
+      client = basic_client(__MODULE__, retry_sleep: fn ms -> send(self(), {:slept, ms}) end)
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        conn |> Plug.Conn.put_resp_header("retry-after", "soon") |> respond_json(429, %{})
+      end)
+
+      Req.Test.expect(__MODULE__, fn conn -> respond_json(conn, 200, %{"results" => []}) end)
+
+      assert {:ok, _} = Spaces.list(client)
+      assert_received {:slept, ms}
+      assert ms in 0..30_000
+    end
+
+    test "a huge Retry-After is clamped to 30 seconds" do
+      client = basic_client(__MODULE__, retry_sleep: fn ms -> send(self(), {:slept, ms}) end)
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        conn |> Plug.Conn.put_resp_header("retry-after", "999999") |> respond_json(429, %{})
+      end)
+
+      Req.Test.expect(__MODULE__, fn conn -> respond_json(conn, 200, %{"results" => []}) end)
+
+      assert {:ok, _} = Spaces.list(client)
+      assert_received {:slept, 30_000}
     end
   end
 

@@ -9,7 +9,7 @@ defmodule Noizu.Confluence.Attachments do
   `comment` optional).
   """
 
-  alias Noizu.Confluence.{Client, Error, Pagination}
+  alias Noizu.Confluence.{Client, Error, Pagination, Uri}
 
   @collection "/api/v2/attachments"
   @v1_content "/rest/api/content"
@@ -29,32 +29,51 @@ defmodule Noizu.Confluence.Attachments do
   @doc "Get an attachment by id."
   @spec get(Client.t(), id(), opts()) :: {:ok, map()} | {:error, Error.t()}
   def get(client, attachment_id, opts \\ []),
-    do: Client.request(client, :get, "#{@collection}/#{attachment_id}", opts)
+    do: Client.request(client, :get, "#{@collection}/#{Uri.path_segment(attachment_id)}", opts)
 
   @doc "Delete an attachment by id."
   @spec delete(Client.t(), id()) :: {:ok, map()} | {:error, Error.t()}
   def delete(client, attachment_id),
-    do: Client.request(client, :delete, "#{@collection}/#{attachment_id}")
+    do: Client.request(client, :delete, "#{@collection}/#{Uri.path_segment(attachment_id)}")
 
   @doc "List the attachments of a page."
   @spec list_for_page(Client.t(), id(), opts()) :: {:ok, map()} | {:error, Error.t()}
   def list_for_page(client, page_id, opts \\ []),
-    do: Client.request(client, :get, "/api/v2/pages/#{page_id}/attachments", opts)
+    do:
+      Client.request(client, :get, "/api/v2/pages/#{Uri.path_segment(page_id)}/attachments", opts)
 
   @doc "Lazily stream the attachments of a page."
   @spec list_for_page_stream(Client.t(), id(), opts()) :: Enumerable.t()
   def list_for_page_stream(client, page_id, opts \\ []),
-    do: Pagination.stream(client, :get, "/api/v2/pages/#{page_id}/attachments", opts)
+    do:
+      Pagination.stream(
+        client,
+        :get,
+        "/api/v2/pages/#{Uri.path_segment(page_id)}/attachments",
+        opts
+      )
 
   @doc "List the attachments of a blog post."
   @spec list_for_blogpost(Client.t(), id(), opts()) :: {:ok, map()} | {:error, Error.t()}
   def list_for_blogpost(client, blogpost_id, opts \\ []),
-    do: Client.request(client, :get, "/api/v2/blogposts/#{blogpost_id}/attachments", opts)
+    do:
+      Client.request(
+        client,
+        :get,
+        "/api/v2/blogposts/#{Uri.path_segment(blogpost_id)}/attachments",
+        opts
+      )
 
   @doc "Lazily stream the attachments of a blog post."
   @spec list_for_blogpost_stream(Client.t(), id(), opts()) :: Enumerable.t()
   def list_for_blogpost_stream(client, blogpost_id, opts \\ []),
-    do: Pagination.stream(client, :get, "/api/v2/blogposts/#{blogpost_id}/attachments", opts)
+    do:
+      Pagination.stream(
+        client,
+        :get,
+        "/api/v2/blogposts/#{Uri.path_segment(blogpost_id)}/attachments",
+        opts
+      )
 
   @doc """
   Upload an attachment to a container (page or blog post) via v1 multipart.
@@ -63,7 +82,14 @@ defmodule Noizu.Confluence.Attachments do
 
     * `{:path, filepath}` — upload a file from disk
     * `{:data, filename, binary}` — upload raw bytes under `filename`
-      (materialized to a temp file for the multipart body)
+      (materialized to a 0600 temp file for the multipart body; the temp name
+      is derived from `Path.basename/1` plus a random component, so path
+      separators in `filename` cannot escape the tmp dir)
+
+  Names that are empty, resolve to `.`/`..`, or contain a NUL byte are
+  rejected with `{:error, %Noizu.Confluence.Error{code: "invalid_filename"}}`.
+  The original `filename` is still sent to Confluence as the multipart part
+  filename.
 
   Options: `:comment` (attachment comment), `:minor_edit` (default `true`),
   plus any Req request option. The `X-Atlassian-Token: no-check` header is
@@ -79,17 +105,66 @@ defmodule Noizu.Confluence.Attachments do
 
   def upload(client, container_id, {:data, filename, content}, opts)
       when is_binary(filename) and is_binary(content) do
-    tmp_dir = System.tmp_dir!()
-    tmp_path = Path.join(tmp_dir, "noizu-confluence-upload-" <> unique() <> "-" <> filename)
+    with {:ok, safe_name} <- safe_filename(filename) do
+      tmp_dir = System.tmp_dir!()
+      tmp_path = Path.join(tmp_dir, "noizu-confluence-upload-" <> unique() <> "-" <> safe_name)
 
-    File.write!(tmp_path, content)
+      try do
+        write_temp!(tmp_path, content)
 
-    stream = File.stream!(tmp_path, [:read, :binary], 65_536)
+        stream = File.stream!(tmp_path, [:read, :binary], 65_536)
+        do_upload(client, container_id, {stream, [filename: filename]}, opts)
+      after
+        File.rm(tmp_path)
+      end
+    end
+  end
+
+  # Only the basename survives: path separators in a caller-supplied filename
+  # must never reach the temp path (T-002), and the original name is passed to
+  # Confluence separately as the multipart filename.
+  defp safe_filename(filename) do
+    base = Path.basename(filename)
+
+    cond do
+      base in ["", ".", ".."] ->
+        {:error,
+         %Error{
+           status: nil,
+           code: "invalid_filename",
+           message: "invalid upload filename #{inspect(filename)}: resolves to #{inspect(base)}",
+           errors: []
+         }}
+
+      String.contains?(base, <<0>>) ->
+        {:error,
+         %Error{
+           status: nil,
+           code: "invalid_filename",
+           message: "invalid upload filename #{inspect(filename)}: contains a NUL byte",
+           errors: []
+         }}
+
+      true ->
+        {:ok, base}
+    end
+  end
+
+  # Owner-only permissions are set before any content is written (T-003);
+  # `:exclusive` also refuses to follow a pre-planted name.
+  defp write_temp!(path, content) do
+    device = File.open!(path, [:write, :exclusive, :binary])
 
     try do
-      do_upload(client, container_id, {stream, [filename: filename]}, opts)
+      case File.chmod(path, 0o600) do
+        :ok ->
+          :ok = IO.binwrite(device, content)
+
+        {:error, reason} ->
+          raise File.Error, reason: reason, action: "chmod", path: path
+      end
     after
-      File.rm(tmp_path)
+      File.close(device)
     end
   end
 
@@ -103,7 +178,10 @@ defmodule Noizu.Confluence.Attachments do
           :error -> []
         end
 
-    Client.request(client, :post, "#{@v1_content}/#{container_id}/child/attachment",
+    Client.request(
+      client,
+      :post,
+      "#{@v1_content}/#{Uri.path_segment(container_id)}/child/attachment",
       form_multipart: form,
       headers: [{"x-atlassian-token", "no-check"}]
     )
@@ -119,7 +197,7 @@ defmodule Noizu.Confluence.Attachments do
     Client.request(
       client,
       :get,
-      "#{@v1_content}/#{container_id}/child/attachment/#{attachment_id}/download",
+      "#{@v1_content}/#{Uri.path_segment(container_id)}/child/attachment/#{Uri.path_segment(attachment_id)}/download",
       [decode_body: false] ++ opts
     )
   end
