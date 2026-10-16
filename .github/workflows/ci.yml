@@ -14,9 +14,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # lowest supported per mix.exs `elixir: "~> 1.14"`
-          - elixir: "1.14"
-            otp: "25"
+          # lowest the locked dep tree compiles on (mint 1.11 forces hpax 1.1,
+          # which requires Elixir ~> 1.15); mix.exs declares a ~> 1.14 floor
+          # for consumers resolving older dep versions
+          - elixir: "1.15"
+            otp: "26"
           # current
           - elixir: "1.18"
             otp: "27"

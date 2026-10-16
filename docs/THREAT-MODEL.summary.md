@@ -24,7 +24,7 @@ Digest of [THREAT-MODEL.md](THREAT-MODEL.md) for quick reference.
 | T-006 | Low | Attacker-influenced `site` config receives Basic credentials (trusted config assumed) | Accepted |
 | T-007 | Low | Malicious continuation can steer same-host paths / prolong crawls | Accepted |
 | T-008 | Low | Retry-After stalls bounded: strict parse, 30 s cap, ≤3 retries | Mitigated — negative/garbage fall back to bounded backoff (tested) |
-| T-009 | Low | No CI / no `mix hex.audit`; small dep tree, lockfile dev-only | Mitigated — `.github/workflows/ci.yml` (1.14/OTP 25 + 1.18/OTP 27, format/compile/test/`mix hex.audit`) |
+| T-009 | Low | No CI / no `mix hex.audit`; small dep tree, lockfile dev-only | Mitigated — `.github/workflows/ci.yml` (1.15/OTP 26 + 1.18/OTP 27, format/compile/test/`mix hex.audit`) |
 | T-010 | Low | `cloud_id` in pinned api.atlassian.com path — same-host confusion only | Mitigated by design (+ path-encoded like every id) |
 
 - **Boundaries**: app ↔ library (trusted config), library ↔ Atlassian

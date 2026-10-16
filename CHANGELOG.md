@@ -23,7 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   way.
 - Security/CI: added `.github/workflows/ci.yml` (push + PR on develop/stage/
   main) running format check, `mix compile --warnings-as-errors`, `mix test`,
-  and `mix hex.audit` on Elixir 1.14/OTP 25 and 1.18/OTP 27 (T-009).
+  and `mix hex.audit` on Elixir 1.15/OTP 26 (lowest the locked dep tree
+  compiles on; `mix.exs` keeps its `~> 1.14` floor) and 1.18/OTP 27 (T-009).
 - Security: confirmed (with injected-sleep tests) that 429 `Retry-After`
   values — negative, garbage, and huge — never sleep outside 0..30 s (T-008).
 - Docs: `docs/THREAT-MODEL.md` rev. 1 — T-001..T-004, T-008, T-009 marked
