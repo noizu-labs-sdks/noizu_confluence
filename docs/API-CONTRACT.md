@@ -1,5 +1,7 @@
 # Confluence Cloud REST API — Client Contract (`noizu_confluence`)
 
+<!-- 〚📁:𓟅𓧔𓗵𓏟〛 docs/API-CONTRACT.md :: Coverage contract between the library and the Confluence Cloud REST API: auth modes, endpoint tables, pagination, errors, non-goals. System of record - update before code. -->
+
 Version: 0.1.0 · Date: 2026-10-17
 Scope: Elixir client library for the **Confluence Cloud** REST API, published as
 `noizu_confluence` (github.com/noizu-labs/noizu_confluence).

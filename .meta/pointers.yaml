@@ -1,0 +1,50 @@
+---
+pointers:
+  03716ae2-208d-5ffd-8bcf-af2d4bcb8077:
+    created_at: 2026-10-16T21:59:15.067588Z
+    description: 'STRIDE threat model: credential handling, pagination host-pinning analysis, upload temp files, CQL surface, supply chain; vulnerability register T-001..T-010.'
+    file_path: docs/THREAT-MODEL.md
+    function: docs/THREAT-MODEL.md
+    kind: file
+    line: 3
+    locations:
+      - file_path: docs/THREAT-MODEL.md
+        line: 3
+    token: 𓉙𔍤𔅉𓶗
+    updated_at: 2026-10-16T21:59:25.958599Z
+  382dad64-017b-5a0f-839b-84a3f91bfa2f:
+    created_at: 2026-10-16T21:59:14.943742Z
+    description: 'Coverage contract between the library and the Confluence Cloud REST API: auth modes, endpoint tables, pagination, errors, non-goals. System of record - update before code.'
+    file_path: docs/API-CONTRACT.md
+    function: docs/API-CONTRACT.md
+    kind: file
+    line: 3
+    locations:
+      - file_path: docs/API-CONTRACT.md
+        line: 3
+    token: 𓟅𓧔𓗵𓏟
+    updated_at: 2026-10-16T21:59:25.958609Z
+  79ff8f42-3337-5f59-a7ca-5358e7d11f5e:
+    created_at: 2026-10-16T21:59:15.030779Z
+    description: 'Repository layout map: docs, lib modules, test tree, packaging files.'
+    file_path: docs/PROJ-LAYOUT.md
+    function: docs/PROJ-LAYOUT.md
+    kind: file
+    line: 3
+    locations:
+      - file_path: docs/PROJ-LAYOUT.md
+        line: 3
+    token: 𓬡𔖡𓿓𓜞
+    updated_at: 2026-10-16T21:59:25.958613Z
+  ed106a24-b201-5a41-b822-b3cad648db80:
+    created_at: 2026-10-16T21:59:14.993613Z
+    description: 'Architecture overview: request pipeline, pagination normalization, optimistic-locking helper, key decisions.'
+    file_path: docs/PROJ-ARCH.md
+    function: docs/PROJ-ARCH.md
+    kind: file
+    line: 3
+    locations:
+      - file_path: docs/PROJ-ARCH.md
+        line: 3
+    token: 𔆯𓕼𓢱𓋰
+    updated_at: 2026-10-16T21:59:25.958617Z

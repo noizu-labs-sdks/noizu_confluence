@@ -4,6 +4,14 @@ defmodule Noizu.Confluence.AttachmentsTest do
   import Support
 
   alias Noizu.Confluence.Attachments
+  alias Noizu.Confluence.Error
+
+  defp upload_files(suffix) do
+    System.tmp_dir!()
+    |> File.ls!()
+    |> Enum.filter(&String.starts_with?(&1, "noizu-confluence-upload-"))
+    |> Enum.filter(&String.ends_with?(&1, suffix))
+  end
 
   test "list/2 and get/2 hit the v2 endpoints" do
     client = basic_client(__MODULE__)
@@ -74,12 +82,62 @@ defmodule Noizu.Confluence.AttachmentsTest do
     assert {:ok, %{"results" => [%{"id" => "att-3"}]}} =
              Attachments.upload(client, 123, {:data, "notes.txt", "raw content"})
 
-    leftovers =
-      System.tmp_dir!()
-      |> File.ls!()
-      |> Enum.filter(&String.contains?(&1, "noizu-confluence-upload-"))
+    leftovers = upload_files("-notes.txt")
 
     assert leftovers == []
+  end
+
+  test "upload/4 with a traversal filename writes only inside tmp_dir and keeps the original multipart filename (T-002)" do
+    client = basic_client(__MODULE__)
+
+    Req.Test.expect(__MODULE__, fn conn ->
+      {:ok, body, conn} = Plug.Conn.read_body(conn)
+      assert body =~ ~s(filename="../../etc/x")
+
+      names = upload_files("-x")
+
+      assert length(names) == 1
+      assert [name] = names
+      assert name =~ ~r/^noizu-confluence-upload-[0-9a-f]{12}-x$/
+      assert File.exists?(Path.join(System.tmp_dir!(), name))
+      refute File.exists?(Path.join(System.tmp_dir!(), "etc"))
+
+      respond_json(conn, 200, %{"results" => []})
+    end)
+
+    assert {:ok, %{"results" => []}} =
+             Attachments.upload(client, 123, {:data, "../../etc/x", "content"})
+
+    assert upload_files("-x") == []
+  end
+
+  test "upload/4 materializes the temp file with owner-only 0600 permissions (T-003)" do
+    client = basic_client(__MODULE__)
+
+    Req.Test.expect(__MODULE__, fn conn ->
+      assert [name] = upload_files("-secret.bin")
+      stat = File.stat!(Path.join(System.tmp_dir!(), name))
+      assert Bitwise.band(stat.mode, 0o777) == 0o600
+
+      respond_json(conn, 200, %{"results" => []})
+    end)
+
+    assert {:ok, _} = Attachments.upload(client, 123, {:data, "secret.bin", "raw content"})
+
+    assert upload_files("-secret.bin") == []
+  end
+
+  describe "upload/4 filename validation (T-002)" do
+    test "rejects empty, dot, dot-dot and NUL-containing filenames" do
+      client = basic_client(__MODULE__)
+
+      for bad <- ["", ".", "..", "evil\0name", "dir/subdir/.."] do
+        assert {:error, %Error{code: "invalid_filename"}} =
+                 Attachments.upload(client, 123, {:data, bad, "content"})
+      end
+
+      refute Enum.any?(File.ls!(System.tmp_dir!()), &String.contains?(&1, "evil"))
+    end
   end
 
   test "download/4 returns the raw binary" do

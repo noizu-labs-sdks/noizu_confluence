@@ -16,6 +16,18 @@ defmodule Noizu.Confluence.PagesTest do
     assert {:ok, %{"version" => %{"number" => 7}}} = Pages.get(client, "123")
   end
 
+  test "get/3 encodes a crafted page id into a single path segment (T-004)" do
+    client = basic_client(__MODULE__)
+
+    Req.Test.expect(__MODULE__, fn conn ->
+      assert conn.request_path == "/wiki/api/v2/pages/1%2F%2E%2E%2Fx%3Fy%3D1"
+      assert conn.query_string == ""
+      respond_json(conn, 200, %{"id" => "1"})
+    end)
+
+    assert {:ok, _} = Pages.get(client, "1/../x?y=1")
+  end
+
   test "create/2 posts the attrs as JSON" do
     client = basic_client(__MODULE__)
 
