@@ -50,7 +50,7 @@ defmodule Noizu.Confluence.MixProject do
       name: "noizu_confluence",
       licenses: ["MIT"],
       links: %{"GitHub" => @source_url},
-      files: ~w(lib docs/API-CONTRACT.md CHANGELOG.md LICENSE README.md mix.exs .formatter)
+      files: ~w(lib docs/API-CONTRACT.md CHANGELOG.md LICENSE README.md mix.exs)
     ]
   end
 end

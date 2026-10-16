@@ -6,7 +6,7 @@ defmodule Noizu.Confluence.BlogPosts do
   `Noizu.Confluence.Pages.update/3`.
   """
 
-  alias Noizu.Confluence.{Client, Error, Pagination}
+  alias Noizu.Confluence.{Client, Error, Pagination, Uri}
 
   @collection "/api/v2/blogposts"
 
@@ -24,7 +24,7 @@ defmodule Noizu.Confluence.BlogPosts do
   @doc "Get a blog post by id."
   @spec get(Client.t(), id(), opts()) :: {:ok, map()} | {:error, Error.t()}
   def get(client, blogpost_id, opts \\ []),
-    do: Client.request(client, :get, "#{@collection}/#{blogpost_id}", opts)
+    do: Client.request(client, :get, "#{@collection}/#{Uri.path_segment(blogpost_id)}", opts)
 
   @doc """
   Create a blog post. `attrs` per the v2 spec: required `"spaceId"`, plus
@@ -47,24 +47,36 @@ defmodule Noizu.Confluence.BlogPosts do
         |> Map.put_new("id", to_string(blogpost_id))
         |> Map.put_new("status", "current")
 
-      Client.request(client, :put, "#{@collection}/#{blogpost_id}", [json: payload] ++ opts)
+      Client.request(
+        client,
+        :put,
+        "#{@collection}/#{Uri.path_segment(blogpost_id)}",
+        [json: payload] ++ opts
+      )
     end
   end
 
   @doc "Delete a blog post by id."
   @spec delete(Client.t(), id()) :: {:ok, map()} | {:error, Error.t()}
   def delete(client, blogpost_id),
-    do: Client.request(client, :delete, "#{@collection}/#{blogpost_id}")
+    do: Client.request(client, :delete, "#{@collection}/#{Uri.path_segment(blogpost_id)}")
 
   @doc "List the blog posts of a space."
   @spec list_for_space(Client.t(), id(), opts()) :: {:ok, map()} | {:error, Error.t()}
   def list_for_space(client, space_id, opts \\ []),
-    do: Client.request(client, :get, "/api/v2/spaces/#{space_id}/blogposts", opts)
+    do:
+      Client.request(client, :get, "/api/v2/spaces/#{Uri.path_segment(space_id)}/blogposts", opts)
 
   @doc "Lazily stream the blog posts of a space."
   @spec list_for_space_stream(Client.t(), id(), opts()) :: Enumerable.t()
   def list_for_space_stream(client, space_id, opts \\ []),
-    do: Pagination.stream(client, :get, "/api/v2/spaces/#{space_id}/blogposts", opts)
+    do:
+      Pagination.stream(
+        client,
+        :get,
+        "/api/v2/spaces/#{Uri.path_segment(space_id)}/blogposts",
+        opts
+      )
 
   defp ensure_version(client, blogpost_id, attrs) do
     if Map.has_key?(attrs, "version") do

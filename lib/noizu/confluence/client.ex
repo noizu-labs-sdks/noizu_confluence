@@ -40,6 +40,7 @@ defmodule Noizu.Confluence.Client do
 
   alias Noizu.Confluence.Error
   alias Noizu.Confluence.Query
+  alias Noizu.Confluence.Uri
 
   @oauth_api_base "https://api.atlassian.com"
   @max_retry_delay_ms 30_000
@@ -195,7 +196,7 @@ defmodule Noizu.Confluence.Client do
   defp base_url(:basic, site, _cloud_id), do: "https://" <> site <> "/wiki"
 
   defp base_url(:oauth, _site, cloud_id),
-    do: @oauth_api_base <> "/ex/confluence/" <> cloud_id <> "/wiki"
+    do: @oauth_api_base <> "/ex/confluence/" <> Uri.path_segment(cloud_id) <> "/wiki"
 
   defp normalize_site(nil), do: nil
 
@@ -236,4 +237,42 @@ defmodule Noizu.Confluence.Client do
   defp validate!(other, _, _, _, _, _) do
     raise ArgumentError, "auth_mode must be :basic or :oauth, got: #{inspect(other)}"
   end
+end
+
+defimpl Inspect, for: Noizu.Confluence.Client do
+  @moduledoc false
+
+  # The struct carries live Atlassian credentials; the default Inspect would
+  # render `api_token` / `access_token` verbatim into logs, REPL history and
+  # crash reports (threat model T-001). The email and a 4-character prefix of
+  # each secret stay visible for debugging; the secrets themselves never reach
+  # the output. Exception messages elsewhere in the library interpolate only
+  # option labels, never credential values.
+
+  def inspect(client, _opts) do
+    fields = [
+      auth_mode: client.auth_mode,
+      base_url: client.base_url,
+      site: client.site,
+      cloud_id: client.cloud_id,
+      email: client.email,
+      api_token: redact(client.api_token),
+      access_token: redact(client.access_token),
+      max_retries: client.max_retries,
+      retry_sleep: client.retry_sleep,
+      req_opts: client.req_opts
+    ]
+
+    rendered = Enum.map_join(fields, ", ", fn {key, value} -> "#{key}: #{inspect(value)}" end)
+
+    "#Noizu.Confluence.Client<" <> rendered <> ">"
+  end
+
+  defp redact(nil), do: nil
+
+  defp redact(token) when is_binary(token) do
+    String.slice(token, 0, 4) <> "…(redacted)"
+  end
+
+  defp redact(other), do: other
 end
