@@ -7,7 +7,7 @@ defmodule Noizu.Confluence.Pages do
   its version incremented automatically. See `docs/API-CONTRACT.md` §6.
   """
 
-  alias Noizu.Confluence.{Client, Error, Pagination}
+  alias Noizu.Confluence.{Client, Error, Pagination, Uri}
 
   @collection "/api/v2/pages"
 
@@ -25,7 +25,7 @@ defmodule Noizu.Confluence.Pages do
   @doc "Get a page by id (response includes `version.number`)."
   @spec get(Client.t(), id(), opts()) :: {:ok, map()} | {:error, Error.t()}
   def get(client, page_id, opts \\ []),
-    do: Client.request(client, :get, "#{@collection}/#{page_id}", opts)
+    do: Client.request(client, :get, "#{@collection}/#{Uri.path_segment(page_id)}", opts)
 
   @doc """
   Create a page. `attrs` per the v2 spec: required `"spaceId"`, plus `"title"`,
@@ -52,44 +52,63 @@ defmodule Noizu.Confluence.Pages do
         |> Map.put_new("id", to_string(page_id))
         |> Map.put_new("status", "current")
 
-      Client.request(client, :put, "#{@collection}/#{page_id}", [json: payload] ++ opts)
+      Client.request(
+        client,
+        :put,
+        "#{@collection}/#{Uri.path_segment(page_id)}",
+        [json: payload] ++ opts
+      )
     end
   end
 
   @doc "Delete a page by id."
   @spec delete(Client.t(), id()) :: {:ok, map()} | {:error, Error.t()}
-  def delete(client, page_id), do: Client.request(client, :delete, "#{@collection}/#{page_id}")
+  def delete(client, page_id),
+    do: Client.request(client, :delete, "#{@collection}/#{Uri.path_segment(page_id)}")
 
   @doc "List the direct children of a page."
   @spec children(Client.t(), id(), opts()) :: {:ok, map()} | {:error, Error.t()}
   def children(client, page_id, opts \\ []),
-    do: Client.request(client, :get, "#{@collection}/#{page_id}/children", opts)
+    do: Client.request(client, :get, "#{@collection}/#{Uri.path_segment(page_id)}/children", opts)
 
   @doc "Lazily stream the direct children of a page."
   @spec children_stream(Client.t(), id(), opts()) :: Enumerable.t()
 
   def children_stream(client, page_id, opts \\ []),
-    do: Pagination.stream(client, :get, "#{@collection}/#{page_id}/children", opts)
+    do:
+      Pagination.stream(
+        client,
+        :get,
+        "#{@collection}/#{Uri.path_segment(page_id)}/children",
+        opts
+      )
 
   @doc "List the version history of a page."
   @spec versions(Client.t(), id(), opts()) :: {:ok, map()} | {:error, Error.t()}
   def versions(client, page_id, opts \\ []),
-    do: Client.request(client, :get, "#{@collection}/#{page_id}/versions", opts)
+    do: Client.request(client, :get, "#{@collection}/#{Uri.path_segment(page_id)}/versions", opts)
 
   @doc "Lazily stream the version history of a page."
   @spec versions_stream(Client.t(), id(), opts()) :: Enumerable.t()
   def versions_stream(client, page_id, opts \\ []),
-    do: Pagination.stream(client, :get, "#{@collection}/#{page_id}/versions", opts)
+    do:
+      Pagination.stream(
+        client,
+        :get,
+        "#{@collection}/#{Uri.path_segment(page_id)}/versions",
+        opts
+      )
 
   @doc "List the pages of a space."
   @spec list_for_space(Client.t(), id(), opts()) :: {:ok, map()} | {:error, Error.t()}
   def list_for_space(client, space_id, opts \\ []),
-    do: Client.request(client, :get, "/api/v2/spaces/#{space_id}/pages", opts)
+    do: Client.request(client, :get, "/api/v2/spaces/#{Uri.path_segment(space_id)}/pages", opts)
 
   @doc "Lazily stream the pages of a space."
   @spec list_for_space_stream(Client.t(), id(), opts()) :: Enumerable.t()
   def list_for_space_stream(client, space_id, opts \\ []),
-    do: Pagination.stream(client, :get, "/api/v2/spaces/#{space_id}/pages", opts)
+    do:
+      Pagination.stream(client, :get, "/api/v2/spaces/#{Uri.path_segment(space_id)}/pages", opts)
 
   defp ensure_version(client, page_id, attrs) do
     if Map.has_key?(attrs, "version") do

@@ -10,7 +10,7 @@ defmodule Noizu.Confluence.Comments do
   `parentCommentId`, and `body` (`%{"representation" => ..., "value" => ...}`).
   """
 
-  alias Noizu.Confluence.{Client, Error, Pagination}
+  alias Noizu.Confluence.{Client, Error, Pagination, Uri}
 
   @footer "/api/v2/footer-comments"
   @inline "/api/v2/inline-comments"
@@ -32,7 +32,7 @@ defmodule Noizu.Confluence.Comments do
   @doc "Get a footer comment by id."
   @spec get_footer(Client.t(), id(), opts()) :: {:ok, map()} | {:error, Error.t()}
   def get_footer(client, comment_id, opts \\ []),
-    do: Client.request(client, :get, "#{@footer}/#{comment_id}", opts)
+    do: Client.request(client, :get, "#{@footer}/#{Uri.path_segment(comment_id)}", opts)
 
   @doc "Create a footer comment. `attrs`: one parent id key, `body`, optional `parentCommentId`."
   @spec create_footer(Client.t(), map()) :: {:ok, map()} | {:error, Error.t()}
@@ -41,32 +41,50 @@ defmodule Noizu.Confluence.Comments do
   @doc "Update a footer comment's body."
   @spec update_footer(Client.t(), id(), map()) :: {:ok, map()} | {:error, Error.t()}
   def update_footer(client, comment_id, attrs),
-    do: Client.request(client, :put, "#{@footer}/#{comment_id}", json: attrs)
+    do: Client.request(client, :put, "#{@footer}/#{Uri.path_segment(comment_id)}", json: attrs)
 
   @doc "Delete a footer comment by id."
   @spec delete_footer(Client.t(), id()) :: {:ok, map()} | {:error, Error.t()}
   def delete_footer(client, comment_id),
-    do: Client.request(client, :delete, "#{@footer}/#{comment_id}")
+    do: Client.request(client, :delete, "#{@footer}/#{Uri.path_segment(comment_id)}")
 
   @doc "List the replies (children) of a footer comment."
   @spec footer_children(Client.t(), id(), opts()) :: {:ok, map()} | {:error, Error.t()}
   def footer_children(client, comment_id, opts \\ []),
-    do: Client.request(client, :get, "#{@footer}/#{comment_id}/children", opts)
+    do: Client.request(client, :get, "#{@footer}/#{Uri.path_segment(comment_id)}/children", opts)
 
   @doc "List footer comments of a page."
   @spec list_footer_for_page(Client.t(), id(), opts()) :: {:ok, map()} | {:error, Error.t()}
   def list_footer_for_page(client, page_id, opts \\ []),
-    do: Client.request(client, :get, "/api/v2/pages/#{page_id}/footer-comments", opts)
+    do:
+      Client.request(
+        client,
+        :get,
+        "/api/v2/pages/#{Uri.path_segment(page_id)}/footer-comments",
+        opts
+      )
 
   @doc "Lazily stream the footer comments of a page."
   @spec list_footer_for_page_stream(Client.t(), id(), opts()) :: Enumerable.t()
   def list_footer_for_page_stream(client, page_id, opts \\ []),
-    do: Pagination.stream(client, :get, "/api/v2/pages/#{page_id}/footer-comments", opts)
+    do:
+      Pagination.stream(
+        client,
+        :get,
+        "/api/v2/pages/#{Uri.path_segment(page_id)}/footer-comments",
+        opts
+      )
 
   @doc "List footer comments of a blog post."
   @spec list_footer_for_blogpost(Client.t(), id(), opts()) :: {:ok, map()} | {:error, Error.t()}
   def list_footer_for_blogpost(client, blogpost_id, opts \\ []),
-    do: Client.request(client, :get, "/api/v2/blogposts/#{blogpost_id}/footer-comments", opts)
+    do:
+      Client.request(
+        client,
+        :get,
+        "/api/v2/blogposts/#{Uri.path_segment(blogpost_id)}/footer-comments",
+        opts
+      )
 
   # -- Inline comments ---------------------------------------------------------
 
@@ -82,7 +100,7 @@ defmodule Noizu.Confluence.Comments do
   @doc "Get an inline comment by id."
   @spec get_inline(Client.t(), id(), opts()) :: {:ok, map()} | {:error, Error.t()}
   def get_inline(client, comment_id, opts \\ []),
-    do: Client.request(client, :get, "#{@inline}/#{comment_id}", opts)
+    do: Client.request(client, :get, "#{@inline}/#{Uri.path_segment(comment_id)}", opts)
 
   @doc """
   Create an inline comment. `attrs`: `pageId` or `blogPostId`, `body`,
@@ -95,30 +113,48 @@ defmodule Noizu.Confluence.Comments do
   @doc "Update an inline comment's body."
   @spec update_inline(Client.t(), id(), map()) :: {:ok, map()} | {:error, Error.t()}
   def update_inline(client, comment_id, attrs),
-    do: Client.request(client, :put, "#{@inline}/#{comment_id}", json: attrs)
+    do: Client.request(client, :put, "#{@inline}/#{Uri.path_segment(comment_id)}", json: attrs)
 
   @doc "Delete an inline comment by id."
   @spec delete_inline(Client.t(), id()) :: {:ok, map()} | {:error, Error.t()}
   def delete_inline(client, comment_id),
-    do: Client.request(client, :delete, "#{@inline}/#{comment_id}")
+    do: Client.request(client, :delete, "#{@inline}/#{Uri.path_segment(comment_id)}")
 
   @doc "List the replies (children) of an inline comment."
   @spec inline_children(Client.t(), id(), opts()) :: {:ok, map()} | {:error, Error.t()}
   def inline_children(client, comment_id, opts \\ []),
-    do: Client.request(client, :get, "#{@inline}/#{comment_id}/children", opts)
+    do: Client.request(client, :get, "#{@inline}/#{Uri.path_segment(comment_id)}/children", opts)
 
   @doc "List inline comments of a page."
   @spec list_inline_for_page(Client.t(), id(), opts()) :: {:ok, map()} | {:error, Error.t()}
   def list_inline_for_page(client, page_id, opts \\ []),
-    do: Client.request(client, :get, "/api/v2/pages/#{page_id}/inline-comments", opts)
+    do:
+      Client.request(
+        client,
+        :get,
+        "/api/v2/pages/#{Uri.path_segment(page_id)}/inline-comments",
+        opts
+      )
 
   @doc "Lazily stream the inline comments of a page."
   @spec list_inline_for_page_stream(Client.t(), id(), opts()) :: Enumerable.t()
   def list_inline_for_page_stream(client, page_id, opts \\ []),
-    do: Pagination.stream(client, :get, "/api/v2/pages/#{page_id}/inline-comments", opts)
+    do:
+      Pagination.stream(
+        client,
+        :get,
+        "/api/v2/pages/#{Uri.path_segment(page_id)}/inline-comments",
+        opts
+      )
 
   @doc "List inline comments of a blog post."
   @spec list_inline_for_blogpost(Client.t(), id(), opts()) :: {:ok, map()} | {:error, Error.t()}
   def list_inline_for_blogpost(client, blogpost_id, opts \\ []),
-    do: Client.request(client, :get, "/api/v2/blogposts/#{blogpost_id}/inline-comments", opts)
+    do:
+      Client.request(
+        client,
+        :get,
+        "/api/v2/blogposts/#{Uri.path_segment(blogpost_id)}/inline-comments",
+        opts
+      )
 end

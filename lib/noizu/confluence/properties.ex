@@ -8,7 +8,7 @@ defmodule Noizu.Confluence.Properties do
   increments when `"version"` is omitted.
   """
 
-  alias Noizu.Confluence.{Client, Error, Pagination}
+  alias Noizu.Confluence.{Client, Error, Pagination, Uri}
 
   @bases %{
     page: "/api/v2/pages",
@@ -23,23 +23,32 @@ defmodule Noizu.Confluence.Properties do
   @doc "List the properties of a page, blog post, or space."
   @spec list(Client.t(), parent_type(), id(), opts()) :: {:ok, map()} | {:error, Error.t()}
   def list(client, type, id, opts \\ []),
-    do: Client.request(client, :get, "#{base!(type)}/#{id}/properties", opts)
+    do: Client.request(client, :get, "#{base!(type)}/#{Uri.path_segment(id)}/properties", opts)
 
   @doc "Lazily stream the properties of a page, blog post, or space."
   @spec list_stream(Client.t(), parent_type(), id(), opts()) :: Enumerable.t()
   def list_stream(client, type, id, opts \\ []),
-    do: Pagination.stream(client, :get, "#{base!(type)}/#{id}/properties", opts)
+    do: Pagination.stream(client, :get, "#{base!(type)}/#{Uri.path_segment(id)}/properties", opts)
 
   @doc "Create a content property. `attrs`: `%{\"key\" => ..., \"value\" => ...}`."
   @spec create(Client.t(), parent_type(), id(), map()) :: {:ok, map()} | {:error, Error.t()}
   def create(client, type, id, attrs),
-    do: Client.request(client, :post, "#{base!(type)}/#{id}/properties", json: attrs)
+    do:
+      Client.request(client, :post, "#{base!(type)}/#{Uri.path_segment(id)}/properties",
+        json: attrs
+      )
 
   @doc "Get a content property by its property id."
   @spec get(Client.t(), parent_type(), id(), id(), opts()) ::
           {:ok, map()} | {:error, Error.t()}
   def get(client, type, id, property_id, opts \\ []),
-    do: Client.request(client, :get, "#{base!(type)}/#{id}/properties/#{property_id}", opts)
+    do:
+      Client.request(
+        client,
+        :get,
+        "#{base!(type)}/#{Uri.path_segment(id)}/properties/#{Uri.path_segment(property_id)}",
+        opts
+      )
 
   @doc """
   Update a content property. `attrs`: `"key"`, `"value"`, optional `"version"`.
@@ -49,7 +58,7 @@ defmodule Noizu.Confluence.Properties do
   @spec update(Client.t(), parent_type(), id(), id(), map()) ::
           {:ok, map()} | {:error, Error.t()}
   def update(client, type, id, property_id, attrs) do
-    path = "#{base!(type)}/#{id}/properties/#{property_id}"
+    path = "#{base!(type)}/#{Uri.path_segment(id)}/properties/#{Uri.path_segment(property_id)}"
 
     with {:ok, attrs} <- ensure_version(client, type, id, property_id, attrs) do
       Client.request(client, :put, path, json: attrs)
@@ -59,7 +68,12 @@ defmodule Noizu.Confluence.Properties do
   @doc "Delete a content property by its property id."
   @spec delete(Client.t(), parent_type(), id(), id()) :: {:ok, map()} | {:error, Error.t()}
   def delete(client, type, id, property_id),
-    do: Client.request(client, :delete, "#{base!(type)}/#{id}/properties/#{property_id}")
+    do:
+      Client.request(
+        client,
+        :delete,
+        "#{base!(type)}/#{Uri.path_segment(id)}/properties/#{Uri.path_segment(property_id)}"
+      )
 
   defp base!(type) when type in [:page, :blogpost, :space], do: Map.fetch!(@bases, type)
 

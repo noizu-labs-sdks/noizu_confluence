@@ -6,6 +6,15 @@ defmodule Noizu.Confluence.Search do
   Note: Atlassian no longer supports user-specific CQL fields (`user`,
   `user.fullname`, ...) on this endpoint — use `GET /rest/api/search/user`
   for user lookups (not wrapped by this library).
+
+  > #### CQL is passed verbatim {: .warning}
+  >
+  > Never build CQL by interpolating untrusted input into the string. CQL is a
+  > query language: a crafted value can change the query's logic (CQL logic
+  > injection) and make the search reach content beyond the intended scope,
+  > within the token's permissions. Escape or strictly validate every value
+  > before embedding it, and treat the `cql` argument as trusted caller
+  > configuration only. The library deliberately ships no CQL escaping helper.
   """
 
   alias Noizu.Confluence.{Client, Error, Pagination}

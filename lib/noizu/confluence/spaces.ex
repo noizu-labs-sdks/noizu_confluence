@@ -7,7 +7,7 @@ defmodule Noizu.Confluence.Spaces do
   plus any Req request option; both are forwarded.
   """
 
-  alias Noizu.Confluence.{Client, Error, Pagination}
+  alias Noizu.Confluence.{Client, Error, Pagination, Uri}
 
   @collection "/api/v2/spaces"
 
@@ -24,7 +24,7 @@ defmodule Noizu.Confluence.Spaces do
   @doc "Get a space by id."
   @spec get(Client.t(), String.t() | integer(), opts()) :: {:ok, map()} | {:error, Error.t()}
   def get(client, space_id, opts \\ []),
-    do: Client.request(client, :get, "#{@collection}/#{space_id}", opts)
+    do: Client.request(client, :get, "#{@collection}/#{Uri.path_segment(space_id)}", opts)
 
   @doc """
   Create a space. `attrs` per the v2 spec: required `"name"`; optional `"key"`,
