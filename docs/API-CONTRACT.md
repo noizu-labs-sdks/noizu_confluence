@@ -4,7 +4,7 @@
 
 Version: 0.1.0 · Date: 2026-10-17
 Scope: Elixir client library for the **Confluence Cloud** REST API, published as
-`noizu_confluence` (github.com/noizu-labs/noizu_confluence).
+`noizu_confluence` (github.com/noizu-labs-sdks/noizu_confluence).
 
 This document is the coverage contract between the library and
 [Atlassian's Confluence Cloud REST API](https://developer.atlassian.com/cloud/confluence/rest/v2/intro/).
