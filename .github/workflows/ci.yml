@@ -21,6 +21,10 @@ jobs:
           # current
           - elixir: "1.18"
             otp: "27"
+          # latest — guards the File.stream!/3 arg-order compat shim
+          # (old order warns at runtime on >= 1.16)
+          - elixir: "1.20"
+            otp: "29"
     steps:
       - uses: actions/checkout@v4
 
