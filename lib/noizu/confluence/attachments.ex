@@ -99,7 +99,7 @@ defmodule Noizu.Confluence.Attachments do
   def upload(client, container_id, source, opts \\ [])
 
   def upload(client, container_id, {:path, path}, opts) when is_binary(path) do
-    stream = File.stream!(path, [:read, :binary], 65_536)
+    stream = chunk_stream(path, 65_536)
     do_upload(client, container_id, {stream, []}, opts)
   end
 
@@ -112,7 +112,7 @@ defmodule Noizu.Confluence.Attachments do
       try do
         write_temp!(tmp_path, content)
 
-        stream = File.stream!(tmp_path, [:read, :binary], 65_536)
+        stream = chunk_stream(tmp_path, 65_536)
         do_upload(client, container_id, {stream, [filename: filename]}, opts)
       after
         File.rm(tmp_path)
@@ -203,4 +203,16 @@ defmodule Noizu.Confluence.Attachments do
   end
 
   defp unique(), do: Base.encode16(:crypto.strong_rand_bytes(6), case: :lower)
+
+  # Lazy 64 KiB chunked file stream for multipart uploads. `File.stream!/3`'
+  # argument order changed in Elixir 1.16 — `(path, modes, line_or_bytes)`
+  # before, `(path, line_or_bytes, modes)` after — and the pre-1.16 order
+  # warns as deprecated on newer compilers. Branch at compile time so each
+  # supported version (mix.exs allows ~> 1.15) compiles only its own
+  # warning-free signature.
+  if Version.match?(System.version(), ">= 1.16.0") do
+    defp chunk_stream(path, chunk_size), do: File.stream!(path, chunk_size, [:read, :binary])
+  else
+    defp chunk_stream(path, chunk_size), do: File.stream!(path, [:read, :binary], chunk_size)
+  end
 end
