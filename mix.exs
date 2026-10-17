@@ -2,7 +2,7 @@ defmodule Noizu.Confluence.MixProject do
   use Mix.Project
 
   @version "0.1.0"
-  @source_url "https://github.com/noizu-labs/noizu_confluence"
+  @source_url "https://github.com/noizu-labs-sdks/noizu_confluence"
 
   def project do
     [
@@ -10,7 +10,7 @@ defmodule Noizu.Confluence.MixProject do
       version: @version,
       description:
         "Elixir client for the Confluence Cloud REST API (v2 primary, v1 only where v2 has no equivalent).",
-      elixir: "~> 1.14",
+      elixir: "~> 1.15",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       deps: deps(),

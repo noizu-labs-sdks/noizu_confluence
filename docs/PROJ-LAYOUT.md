@@ -79,5 +79,5 @@ The suite runs entirely against `Req.Test` plugs (see
 ## Key files requiring setup
 
 None. The library holds no environment files (`.envrc`, `.env.example`),
-editor configs, or tool-version pins beyond `elixir: "~> 1.14"` in `mix.exs`;
+editor configs, or tool-version pins beyond `elixir: "~> 1.15"` in `mix.exs`;
 credentials are supplied per call at runtime.
