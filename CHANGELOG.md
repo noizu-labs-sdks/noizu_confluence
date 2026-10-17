@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Changed: repository moved to the `noizu-labs-sdks` GitHub org —
+  `@source_url`/`homepage_url` and the hex package `links` (and doc prose)
+  now point at `github.com/noizu-labs-sdks/noizu_confluence`.
+- Changed: minimum supported Elixir raised from `~> 1.14` to `~> 1.15`. The
+  locked dependency tree (mint 1.11 -> hpax 1.1) already requires Elixir
+  1.15 and CI's lowest matrix entry (1.15/OTP 26) was already testing it;
+  the declared `mix.exs` floor now matches what is actually tested.
 - Security: `Noizu.Confluence.Client` has a custom `Inspect` impl — `api_token`
   and `access_token` render as a 4-character prefix + redaction marker, never
   in full (threat model T-001); exception messages interpolate only option
@@ -24,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Security/CI: added `.github/workflows/ci.yml` (push + PR on develop/stage/
   main) running format check, `mix compile --warnings-as-errors`, `mix test`,
   and `mix hex.audit` on Elixir 1.15/OTP 26 (lowest the locked dep tree
-  compiles on; `mix.exs` keeps its `~> 1.14` floor) and 1.18/OTP 27 (T-009).
+  compiles on, which the `mix.exs` floor now matches) and 1.18/OTP 27 (T-009).
 - Security: confirmed (with injected-sleep tests) that 429 `Retry-After`
   values — negative, garbage, and huge — never sleep outside 0..30 s (T-008).
 - Docs: `docs/THREAT-MODEL.md` rev. 1 — T-001..T-004, T-008, T-009 marked

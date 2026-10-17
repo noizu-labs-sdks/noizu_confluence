@@ -29,7 +29,7 @@ Digest of [PROJ-ARCH.md](PROJ-ARCH.md) for quick reference.
   omitted.
 - **Responses**: plain maps (provider payloads verbatim); content bodies
   (XHTML/ADF/wiki) pass through unmodified.
-- **Stack**: Elixir ~> 1.14, Req ~> 0.7 (Finch/Mint, `:form_multipart`),
+- **Stack**: Elixir ~> 1.15, Req ~> 0.7 (Finch/Mint, `:form_multipart`),
   Jason; test-only Plug. Tests are fully offline (`Req.Test` plugs).
 - **Docs of record**: `docs/API-CONTRACT.md` (endpoint coverage, updated
   before code), `docs/THREAT-MODEL.md` (security posture).
