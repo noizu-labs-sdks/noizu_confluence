@@ -72,6 +72,39 @@ defmodule Noizu.Confluence.AttachmentsTest do
     end
   end
 
+  test "upload/4 with a file path streams files larger than one 64 KiB chunk intact" do
+    client = basic_client(__MODULE__)
+
+    # 3 full 64 KiB chunks + a partial tail: proves chunked, lazy reading.
+    content = :binary.copy(<<0>>, 65_536 * 3) <> "tail"
+
+    path =
+      Path.join(
+        System.tmp_dir!(),
+        "noizu-confluence-test-#{System.unique_integer([:positive])}.bin"
+      )
+
+    File.write!(path, content)
+
+    Req.Test.expect(__MODULE__, fn conn ->
+      assert conn.request_path == "/wiki/rest/api/content/123/child/attachment"
+
+      {:ok, raw, conn} = Plug.Conn.read_body(conn)
+      send(self(), {:body, raw})
+      respond_json(conn, 200, %{"results" => [%{"id" => "att-big"}]})
+    end)
+
+    try do
+      assert {:ok, _} = Attachments.upload(client, 123, {:path, path})
+    after
+      File.rm(path)
+    end
+
+    assert_received {:body, raw}
+    assert byte_size(raw) >= byte_size(content)
+    assert raw =~ "tail"
+  end
+
   test "upload/4 with raw data materializes a temp file and cleans up" do
     client = basic_client(__MODULE__)
 

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Fixed: `Attachments.upload/4` no longer triggers the Elixir 1.16+
+  `File.stream!/3` deprecation warning at runtime (observed on Elixir 1.20).
+  A compile-time branch now picks the signature native to the compiling
+  version — `(path, line_or_bytes, modes)` on >= 1.16, `(path, modes,
+  line_or_bytes)` on 1.15 — keeping the lazy 64 KiB chunked stream identical.
+  CI gained an Elixir 1.20/OTP 29 lane and a >64 KiB multi-chunk upload test
+  guards the streaming path.
 - Changed: repository moved to the `noizu-labs-sdks` GitHub org —
   `@source_url`/`homepage_url` and the hex package `links` (and doc prose)
   now point at `github.com/noizu-labs-sdks/noizu_confluence`.
